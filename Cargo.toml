@@ -1,0 +1,6 @@
+[package]
+name = "GCJ2016-server"
+version = "0.1.0"
+authors = ["Eric Young <eric.j.young88@gmail.com>"]
+
+[dependencies]
