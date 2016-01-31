@@ -3,7 +3,7 @@ extern crate hyper;
 extern crate rustc_serialize;
 
 use std::sync::Mutex;
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender};
 use std::io::Read;
 use hyper::server::{Handler, Server, Request, Response};
 use voodoo::{GameManager, VoodooMessage, ActionContent};

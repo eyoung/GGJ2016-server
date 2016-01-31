@@ -2,7 +2,6 @@ use std::sync::mpsc::{Sender, channel};
 use std::thread;
 use rustc_serialize::json;
 use voodoo::Scene;
-use voodoo::VoodooError;
 
 pub struct GameManager {
     current_scene: Scene,
