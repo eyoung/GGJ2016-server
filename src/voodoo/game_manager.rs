@@ -1,5 +1,6 @@
 use std::sync::mpsc::{Sender, channel};
 use std::thread;
+use std::time::Duration;
 use rustc_serialize::json;
 use voodoo::Scene;
 use voodoo::VoodooError;
@@ -40,14 +41,19 @@ impl GameManager {
 
                             manager.client_queue.push(response_channel);
                             if manager.client_queue.len() == manager.num_clients {
-                                let response = VoodooResponse::new(&manager.current_scene);
-                                let body_content = json::encode(&response).unwrap();
-                                for client in &manager.client_queue {
-                                    client.send(body_content.to_string()).unwrap();
-                                }
-                                manager.current_scene.next();
-                                manager.client_queue.clear()
+                                GameManager::notify_clients(&mut manager.client_queue, &mut manager.current_scene);
+                            } else {
+                                let timeout_channel = event_sender.clone();
+                                thread::spawn(move || {
+                                    let duration = Duration::new(15, 0);
+                                    thread::sleep(duration);
+                                    timeout_channel.send(VoodooMessage::Timeout).unwrap();
+                                });
                             }
+                        }
+
+                        VoodooMessage::Timeout => {
+                            GameManager::notify_clients(&mut manager.client_queue, &mut manager.current_scene);
                         }
                     }
                 }
@@ -55,10 +61,21 @@ impl GameManager {
         });
         spawn_receiver.recv().unwrap()
     }
+
+    pub fn notify_clients(clients: &mut Vec<Sender<String>>, scene: &mut Scene) {
+        let response = VoodooResponse::new(scene);
+        let body_content = json::encode(&response).unwrap();
+        for client in &*clients {
+            client.send(body_content.to_string()).unwrap();
+        }
+        scene.next();
+        clients.clear();
+    }
 }
 
 pub enum VoodooMessage {
-    TurnAction(ActionContent, Sender<String>)
+    TurnAction(ActionContent, Sender<String>),
+    Timeout
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
