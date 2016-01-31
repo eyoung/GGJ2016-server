@@ -56,6 +56,10 @@ impl GameManager {
                                 manager.current_scene.next();
                             }
                         }
+
+                        VoodooMessage::TurnAction(action) => {
+
+                        }
                     }
                 }
             }
@@ -65,7 +69,8 @@ impl GameManager {
 }
 
 pub enum VoodooMessage {
-    Magic(Region, isize, Sender<String>)
+    Magic(Region, isize, Sender<String>),
+    TurnAction(ActionContent, Sender<String>)
 }
 
 pub enum Region {
@@ -110,4 +115,14 @@ impl VoodooResponse {
             current_level: scene.scene_number
         }
     }
+}
+
+#[derive(RustcDecodable, RustcEncodable)]
+pub struct ActionContent {
+    head: isize,
+    body: isize,
+    arm_left: isize,
+    arm_right: isize,
+    leg_left: isize,
+    leg_right: isize
 }
