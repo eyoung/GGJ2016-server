@@ -30,23 +30,15 @@ impl GameManager {
                 let mut manager = GameManager::new();
                 while let Ok(message) = event_receiver.recv() {
                     match message {
-                        VoodooMessage::Magic(region, value, responce_channel) => {
-                            match region {
-                                Region::Head => {
-                                    manager.current_scene.head += value;
-                                }
-                                Region::Body => {
-                                    manager.current_scene.body += value;
-                                }
-                                Region::Arms => {
-                                    manager.current_scene.arms += value;
-                                }
-                                Region::Legs => {
-                                    manager.current_scene.legs += value;
-                                }
-                            }
-                            
-                            manager.client_queue.push(responce_channel);
+                        VoodooMessage::TurnAction(action, response_channel) => {
+                            manager.current_scene.head += action.head;
+                            manager.current_scene.body += action.body;
+                            manager.current_scene.arm_left += action.arm_left;
+                            manager.current_scene.arm_right += action.arm_right;
+                            manager.current_scene.leg_left += action.leg_left;
+                            manager.current_scene.leg_right += action.leg_right;
+
+                            manager.client_queue.push(response_channel);
                             if manager.client_queue.len() == manager.num_clients {
                                 let response = VoodooResponse::new(&manager.current_scene);
                                 let body_content = json::encode(&response).unwrap();
@@ -54,6 +46,7 @@ impl GameManager {
                                     client.send(body_content.to_string()).unwrap();
                                 }
                                 manager.current_scene.next();
+                                manager.client_queue.clear()
                             }
                         }
                     }
@@ -65,34 +58,17 @@ impl GameManager {
 }
 
 pub enum VoodooMessage {
-    Magic(Region, isize, Sender<String>)
-}
-
-pub enum Region {
-    Head,
-    Arms,
-    Body,
-    Legs
-}
-
-impl Region {
-    pub fn new(text: &str) -> Result<Region, VoodooError> {
-        match text {
-            "head" => Ok(Region::Head),
-            "arms" => Ok(Region::Arms),
-            "body" => Ok(Region::Body),
-            "legs" => Ok(Region::Legs),
-            _ => Err(VoodooError::InvalidRegionError)
-        }
-    }
+    TurnAction(ActionContent, Sender<String>)
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
 struct VoodooResponse {
     next_level: isize,
-    arm_score: isize,
+    arm_left_score: isize,
+    arm_right_score: isize,
     head_score: isize,
-    legs_score: isize,
+    leg_left_score: isize,
+    leg_right_score: isize,
     body_score: isize,
     total_score: isize,
     current_level: isize
@@ -102,12 +78,24 @@ impl VoodooResponse {
     fn new(scene: &Scene) -> VoodooResponse {
         VoodooResponse {
             next_level: scene.scene_number+1,
-            arm_score: scene.arms,
+            arm_left_score: scene.arm_left,
+            arm_right_score: scene.arm_right,
             head_score: scene.head,
-            legs_score: scene.legs,
+            leg_left_score: scene.leg_left,
+            leg_right_score: scene.leg_right,
             body_score: scene.body,
-            total_score: scene.arms + scene.head + scene.legs + scene.body,
+            total_score: scene.arm_left + scene.arm_right + scene.head + scene.leg_left + scene.leg_right + scene.body,
             current_level: scene.scene_number
         }
     }
+}
+
+#[derive(RustcDecodable, RustcEncodable)]
+pub struct ActionContent {
+    head: isize,
+    body: isize,
+    arm_left: isize,
+    arm_right: isize,
+    leg_left: isize,
+    leg_right: isize
 }
