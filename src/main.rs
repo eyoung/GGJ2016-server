@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::io::Read;
 use hyper::server::{Handler, Server, Request, Response};
-use voodoo::{GameManager, VoodooMessage, Region, ActionContent};
+use voodoo::{GameManager, VoodooMessage, ActionContent};
 use rustc_serialize::json;
 use rustc_serialize::json::DecoderError;
 
@@ -34,18 +34,10 @@ impl Handler for NetworkHandler {
         let request_body = request.read_to_end(&mut request_buffer);
         if let Ok(body_content) = String::from_utf8(request_buffer) {
             println!("Requested with body {}", &body_content);
-            let result: Result<PokeRequest, DecoderError> = json::decode(&body_content);
-            let newer_result: Result<ActionContent, DecoderError> = json::decode(&body_content);
-            if let Ok(poke_request) = result {
-                if let Ok(region) = Region::new(&poke_request.target) {
-                    let (response_sender, response_receiver) = channel();
-                    let message = VoodooMessage::Magic(region, poke_request.value, response_sender.clone());
-                    response_body_channel = Some(response_receiver);
-                    self.manager_sender.lock().unwrap().send(message).unwrap();
-                }
-            } else if let Ok(action_content) = newer_result {
+            let result: Result<ActionContent, DecoderError> = json::decode(&body_content);
+            if let Ok(action_content) = result {
                 let (response_sender, response_receiver) = channel();
-                let message = VoodooMessage::TurnAction(action_content);
+                let message = VoodooMessage::TurnAction(action_content, response_sender.clone());
                 response_body_channel = Some(response_receiver);
                 self.manager_sender.lock().unwrap().send(message).unwrap();
             }
@@ -58,10 +50,4 @@ impl Handler for NetworkHandler {
             response.send(format!("{}\n", "it's alive").as_bytes()).unwrap();
         }
     }
-}
-
-#[derive(RustcDecodable, RustcEncodable)]
-struct PokeRequest {
-    target: String,
-    value: isize
 }
